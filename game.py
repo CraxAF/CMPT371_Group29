@@ -3,12 +3,14 @@ import pygame
 from sprites import *
 from config import *
 import sys
+import client
+
 
 # Main game class that handles game state, drawing, and logic
 class Game:
     def __init__(self):
         pygame.init()
-        self.players = {}  # Maps player names to Player objects
+        self.players = client.get_player_position()  # Maps player names to Player objects
         self.spawn_points = []  # Stores tilemap spawn point positions
         self.sprite_counter = 0  # Used to assign unique sprites
         self.screen = pygame.display.set_mode([win_width, win_height])  # Game window
@@ -80,7 +82,8 @@ class Game:
     def new(self):
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.blocks = pygame.sprite.LayeredUpdates()
-        self.create_tilemap()  # Build the map
+        #self.create_tilemap()  # Build the map
+        client.main(player_name)
         self.playing = True
 
     # Handles game events (e.g., quitting)
@@ -96,10 +99,31 @@ class Game:
 
     # Draws all game objects to the screen
     def draw(self):
+        #self.screen.fill(black)
+        #for sprite in self.all_sprites:
+            #self.screen.blit(sprite.image, sprite.rect)
+        #self.clock.tick(60)
         self.screen.fill(black)
-        for sprite in self.all_sprites:
-            self.screen.blit(sprite.image, sprite.rect)
-        self.clock.tick(60)
+        positions = client.get_player_position()
+        for name, pos in positions.items():
+            if name not in self.players:
+                sprite_idx = 0
+                self.players[name] = Player(self, pos["x"], pos["y"], sprite_idx)
+            else:
+                self.players[name].x = pos["x"]
+                self.players[name].y = pos["y"]
+                self.players[name].rect.topleft = (pos["x"], pos["y"])
+            self.screen.blit(self.players[name].image, self.players[name].rect)
+
+        objects = client.get_game_objects()
+        for obj in objects.values():
+            if obj["type"] == "door":
+                self.screen.blit(self.door_img.image, (obj["x"], obj["y"]))
+            elif obj["type"] == "pushable":
+                self.screen.blit(self.key_img.image, (obj["x"], obj["y"]))
+            elif obj["type"] == "wall":
+                self.screen.blit(self.wall_img.image, (obj["x"], obj["y"]))
+
         pygame.display.update()
 
     # Creates game world from tile_map config
