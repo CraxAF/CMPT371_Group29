@@ -1,14 +1,19 @@
 import json
 import pygame
+from sprites import *
+from config import *
 
 class SyncManager:
     def __init__(self):
         self.clients = []                    # List of client sockets
-        self.player_positions = {}           # player_name -> {"x": int, "y": int}
-        self.objects = {}                    # object_id -> object data
+        self.player_positions = {}  # player_name -> {x, y}
+        self.objects = {}  # object_id -> {type, x, y, possessed_by}
+        self.spawn_points = []
+        self.next_object_id = 1                   # object_id -> object data
         self.door_unlocked = False
         self.passed_door = {}                # player_name -> bool
         self.socket_map = {}                 # player_name -> client_socket
+        self.initialize_map()
 
     def broadcast(self, message_dict, sender_socket=None):
         message_json = json.dumps(message_dict).encode()
@@ -18,41 +23,52 @@ class SyncManager:
             except:
                 self.clients.remove(client)
 
+    def initialize_map(self):
+        from config import tile_map  # Import tile_map here
+        for i, row in enumerate(tile_map):
+            for j, tile in enumerate(row):
+                x, y = j * tile_size, i * tile_size
+                if tile == "B":
+                    self.objects[f"wall_{x}_{y}"] = {"type": "wall", "x": x, "y": y}
+                elif tile == "D":
+                    self.objects[f"door_{x}_{y}"] = {"type": "door", "x": x, "y": y}
+                elif tile == "K":
+                    self.objects[f"key_{x}_{y}"] = {"type": "pushable", "x": x, "y": y, "possessed_by": None}
+                elif tile == "P":
+                    self.spawn_points.append((x, y))
+
     def handle_join(self, client_socket, message_dict):
         player_name = message_dict.get("player")
-        x, y = 100, 100
-
         if player_name in self.player_positions:
             print(f"Player {player_name} already joined.")
             return
 
+        # Lazily initialize map on first player join
+        if not self.player_positions:
+            print("First player joined — initializing map.")
+            self.initialize_map()
+
+        # Assign spawn position
+        if self.spawn_points:
+            x, y = self.spawn_points[len(self.player_positions) % len(self.spawn_points)]
+        else:
+            x, y = 100, 100  # Fallback
+
+        # Register player
         self.clients.append(client_socket)
         self.player_positions[player_name] = {"x": x, "y": y}
         self.passed_door[player_name] = False
         self.socket_map[player_name] = client_socket
-        if not self.objects:
-            self.objects["key1"] = {
-                "id": "key1",
-                "type": "pushable",
-                "x": 800,
-                "y": 800,
-                "possessed_by": None
-            }
-            self.objects["door1"] = {
-                "id": "door1",
-                "type": "door",
-                "x": 400,
-                "y": 400,
-                "locked": True
-            }
 
         print(f"Player {player_name} joined the game at ({x}, {y})")
 
+        # Sync state to all clients
         self.broadcast({
             "type": "sync_positions",
             "players": self.player_positions
         })
         self.sync_objects()
+
 
     def handle_move(self, client_socket, message_dict):
         player_name = message_dict.get("player")
@@ -176,20 +192,5 @@ class SyncManager:
         self.door_unlocked = False
         self.passed_door.clear()
 
-        # Optionally, reinitialize the objects (if necessary)
-        self.objects["key1"] = {
-            "id": "key1",
-            "type": "pushable",
-            "x": 800,
-            "y": 800,
-            "possessed_by": None
-        }
-        self.objects["door1"] = {
-            "id": "door1",
-            "type": "door",
-            "x": 400,
-            "y": 400,
-            "locked": True
-        }
-        print("Game state reset complete.")
-
+        self.initialize_map()
+        print("Game state reset. Ready for new players to join.")
