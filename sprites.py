@@ -3,6 +3,8 @@ import pygame
 import random
 from config import *
 import math 
+from mechanics import handle_player_movement
+
 
 # Handles character sprite sheet and allows extracting individual sprites
 class CharSprite:
@@ -54,8 +56,17 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = self.x 
         self.rect.y = self.y
 
+        self.vel_y = 0
+        self.gravity = 1
+        self.is_jumping = False
+        self.jump_strength = -15
+        self.on_ground = True
+
+
     def update(self):
-        pass  # Update method placeholder (for future movement, animation, etc.)
+        keys = pygame.key.get_pressed()
+        handle_player_movement(self, keys)
+
 
 
 # Represents a wall tile
