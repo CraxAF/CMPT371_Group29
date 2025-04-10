@@ -40,7 +40,7 @@ class SyncManager:
                     self.objects[f"door{self.door_number}"] = {"id":f"door{self.door_number}","type": "door", "x": x, "y": y, "locked": True}
                     self.door_number += 1
                 elif tile == "K":
-                    self.objects[f"key{self.key_number}"] = {"id":f"key{self.key_number}","type": "pushable", "x": x, "y": y, "possessed_by": None}
+                    self.objects[f"key{self.key_number}"] = {"id":f"key{self.key_number}","type": "key", "x": x, "y": y, "possessed_by": None}
                     self.key_number += 1
                 elif tile == ".":
                     self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
@@ -68,6 +68,7 @@ class SyncManager:
 
         # Register player
         self.clients.append(client_socket)
+        
         self.player_positions[player_name] = {"x": x, "y": y}
         self.passed_door[player_name] = False
         self.socket_map[player_name] = client_socket
@@ -85,9 +86,11 @@ class SyncManager:
     def handle_move(self, client_socket, message_dict):
         player_name = message_dict.get("player")
         position = message_dict.get("position")
-
+        sprite_counter = message_dict.get("sprite_counter")
         if player_name in self.player_positions:
-            self.player_positions[player_name] = {"x": position[0], "y": position[1]}
+            if sprite_counter is None:
+                sprite_counter = self.player_positions[player_name]["sprite_counter"]
+            self.player_positions[player_name] = {"x": position[0], "y": position[1], "sprite_counter": sprite_counter}
         else:
             print(f"Error: Player {player_name} not found")
             return
@@ -105,7 +108,7 @@ class SyncManager:
         type_ = message_dict.get("type")
         if object_id not in self.objects:
             return
-        if(type_ == "pushable"):
+        if(type_ == "key"):
             obj = self.objects[object_id]
             obj["possessed_by"] = possessed_by
 

@@ -32,7 +32,7 @@ def receive_messages(sock):
                 msg_json, buffer = buffer.split("\n", 1)
                 message_dict = json.loads(msg_json)
                 server_messages.append(message_dict)
-                print("Received message:", message_dict)
+                #print("Received message:", message_dict)
                 if message_dict["type"] == "sync_positions":
                     global player_positions
                     player_positions = message_dict["players"]
@@ -109,13 +109,14 @@ def send_action(action, player_name, possessed_by, object_id=None, position=None
         message = {
             "type": "move",
             "player": player_name,
-            "position": position
+            "position": position,
+            "sprite_counter": object_id
         }
         send_message(message)
 
-    elif action == "push":
+    elif action == "pickup":
         message = {
-            "type": "push",
+            "type": "pickup",
             "player": player_name,
             "possessed_by": possessed_by,
             "object_id": object_id,

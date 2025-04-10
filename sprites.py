@@ -246,7 +246,7 @@ class Key(pygame.sprite.Sprite):
             for player in self.game.players.values():
                 if self.rect.colliderect(player.rect):
                     self.carried_by = player
-                    client.send_action("push", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
+                    client.send_action("pickup", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
                     break
 
             #Only place a floor tile once, and only if not already used

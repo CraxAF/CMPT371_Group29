@@ -31,7 +31,7 @@ def handle_client(client_socket, addr):
                         sm.handle_join(client_socket, message_dict)
                     elif msg_type == "move":
                         sm.handle_move(client_socket, message_dict)
-                    elif msg_type == "push":
+                    elif msg_type == "pickup":
                         sm.handle_objects(client_socket, message_dict)
                     elif msg_type == "unlock":
                         sm.handle_objects(client_socket, message_dict)

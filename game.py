@@ -76,13 +76,15 @@ class Game:
         return player_name
 
     # Adds a new player sprite to the game
-    def add_player(self, name, x, y):
+    def add_player(self, name, x, y, sprite_idx=None):
         #print(f"[DEBUG] Adding player {name} at ({x}, {y})")
-        self.sprite_counter = client.get_sprite_counter()  # Get the sprite counter from the server
-        sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
+        if sprite_idx is None:
+            self.sprite_counter = client.get_sprite_counter()  # Get the sprite counter from the server
+            sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
         main = (name == player_name)  # Check if this is the main player
         player = Player(self, x, y, name, main, sprite_idx)
-        self.players[name] = player        
+        self.players[name] = player 
+        client.send_action("move", name, player_name,sprite_idx, position=(x, y))       
         
     # Sets up the level and sprite groups
     def new(self):
@@ -103,7 +105,12 @@ class Game:
         positions = client.get_player_position()  # Fetch player positions from the server
         for name, pos in positions.items():
             x,y = pos["x"],pos["y"]
-            self.add_player(name, x, y)
+            print(pos)
+            if("sprite_counter" in pos):
+                sprite_idx = pos["sprite_counter"]
+                self.add_player(name, x, y, sprite_idx)
+            else:
+                self.add_player(name, x, y)
 
         #print("[DEBUG] Wall tile positions:")
         #for wall in self.blocks:
@@ -133,7 +140,10 @@ class Game:
         for name, pos in positions.items():
             #print(f"[DEBUG] Updating position for {name}: {pos}")
             if name not in self.players:
-                self.add_player(name, pos["x"], pos["y"])
+                if("sprite_counter" not in pos):
+                    self.add_player(name, pos["x"], pos["y"])
+                else:
+                    self.add_player(name, pos["x"], pos["y"], pos["sprite_counter"])
             elif name in self.players and name != player_name:
                 player = self.players[name]
                 player.x = pos["x"] * tile_size
@@ -155,7 +165,7 @@ class Game:
                         self.doors[door].unlock()
                         del self.doors[door]
                         break
-            if object["type"] == "pushable":
+            if object["type"] == "key":
                 if(object["id"] not in self.keys):
                     del self.keys[object["id"]]
                     break
@@ -189,7 +199,7 @@ class Game:
             elif object["type"] == "door":
                 door = Door(self, object["x"], object["y"], object["id"])
                 self.doors[object["id"]] = door
-            elif object["type"] == "pushable":
+            elif object["type"] == "key":
                 key = Key(self, object["x"], object["y"], object["id"])
                 self.keys[object["id"]] = key
             elif object["type"] == "floor":
