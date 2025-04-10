@@ -17,6 +17,7 @@ player_positions = {}  # player_name -> position
 game_objects = {}
 player_passed_door = False
 game_pass = False
+sprite_counter = 0
 
 def receive_messages(sock):
     global player_passed_door, game_pass
@@ -31,11 +32,15 @@ def receive_messages(sock):
                 msg_json, buffer = buffer.split("\n", 1)
                 message_dict = json.loads(msg_json)
                 server_messages.append(message_dict)
-
+                print("Received message:", message_dict)
                 if message_dict["type"] == "sync_positions":
                     global player_positions
                     player_positions = message_dict["players"]
-
+                    global sprite_counter
+                    if len(player_positions) > 0:
+                        sprite_counter = len(player_positions)-1
+                    else:
+                        sprite_counter = 0
                 elif message_dict["type"] == "sync_objects":
                     global game_objects
                     game_objects = message_dict["objects"]
@@ -52,6 +57,14 @@ def receive_messages(sock):
         except Exception as e:
             print("[-] Disconnected from server.")
             break
+
+def get_sprite_counter():
+    global sprite_counter
+    return sprite_counter
+
+def set_sprite_counter(counter):
+    global sprite_counter
+    sprite_counter = counter
 
 def get_player_position():
     global player_positions 
@@ -81,7 +94,7 @@ def main(player_name):
     # Send join message
     join_msg = {
         "type": "join",
-        "player": player_name
+        "player": player_name,
     }
     client_socket.sendall((json.dumps(join_msg) + "\n").encode())
 

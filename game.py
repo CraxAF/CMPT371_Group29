@@ -78,11 +78,11 @@ class Game:
     # Adds a new player sprite to the game
     def add_player(self, name, x, y):
         #print(f"[DEBUG] Adding player {name} at ({x}, {y})")
+        self.sprite_counter = client.get_sprite_counter()  # Get the sprite counter from the server
         sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
         main = (name == player_name)  # Check if this is the main player
         player = Player(self, x, y, name, main, sprite_idx)
-        self.players[name] = player
-        self.sprite_counter += 1        
+        self.players[name] = player        
         
     # Sets up the level and sprite groups
     def new(self):
@@ -104,10 +104,6 @@ class Game:
         for name, pos in positions.items():
             x,y = pos["x"],pos["y"]
             self.add_player(name, x, y)
-        #for i, name in enumerate([player_name]):
-        #    if i < len(g.spawn_points):
-        #        x, y = g.spawn_points[i]
-        #        g.add_player(name, x, y)
 
         #print("[DEBUG] Wall tile positions:")
         #for wall in self.blocks:
@@ -198,21 +194,6 @@ class Game:
                 self.keys[object["id"]] = key
             elif object["type"] == "floor":
                 Floor(self, object["x"], object["y"], object["id"])
-        #for i, row in enumerate(tile_map):
-        #    for j, tile in enumerate(row):
-        #        if tile == "B":
-        #            Wall(self, j, i)
-        #        elif tile == "D":
-        #            Door(self, j, i, f"door{self.door_number}")
-        #            self.door_number += 1
-        #        elif tile == ".":
-        #            Floor(self, j, i)
-        #        elif tile == "K":
-        #            Key(self, j, i, f"key{self.key_number}")
-        #            self.key_number += 1
-        #        elif tile == "P":
-        #            Floor(self, j, i)
-        #            self.spawn_points.append((j, i))
         
 
     #Create new instance of game
@@ -255,13 +236,6 @@ g = Game()
 player_name = g.intro_screen()  # Get player name
 client.main(player_name)  # Start the main game loop
 g.new()
-
-# Assign players to available spawn points
-#names = [player_name]
-#for i, name in enumerate(names):
-    #if i < len(g.spawn_points):
-        #x, y = g.spawn_points[i]
-
 
 # Run the main loop
 while g.running:
