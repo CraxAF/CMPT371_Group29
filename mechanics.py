@@ -1,48 +1,48 @@
-# mechanics.py
-
 import pygame
-from config import win_height
+from config import tile_size
 
-def handle_player_movement(player, keys):
-    speed = 4
-    dx = 0
-    dy = 0
+def handle_tile_movement(player, keys):
+    if player.moving:
+        #print("[DEBUG] Player is already moving, skipping input.")
+        return
 
+    dx, dy = 0, 0
 
     if keys[pygame.K_a]:
-        dx -= speed
-    if keys[pygame.K_d]:
-        dx += speed
+        dx = -1
+        #print("[DEBUG] A pressed - move left")
+    elif keys[pygame.K_d]:
+        dx = 1
+        #print("[DEBUG] D pressed - move right")
+    elif keys[pygame.K_w]:
+        dy = -1
+        #print("[DEBUG] W pressed - move up")
+    elif keys[pygame.K_s]:
+        dy = 1
+        #print("[DEBUG] S pressed - move down")
 
-    # Jumping
-    if (keys[pygame.K_SPACE] or keys[pygame.K_w]) and player.on_ground:
-        player.vel_y = player.jump_strength
-        player.is_jumping = True
-        player.on_ground = False
+    if dx != 0 or dy != 0:
+        for sprite in player.game.blocks:
+            if hasattr(sprite, "try_unlock"):
+                sprite.try_unlock(player, dx * tile_size, dy * tile_size)
 
-    # Apply gravity
-    player.vel_y += player.gravity
-    dy += player.vel_y
+        target_x = player.rect.x + dx * tile_size
+        target_y = player.rect.y + dy * tile_size
+        #print(f"[DEBUG] Target position: ({target_x}, {target_y})")
 
-    # Horizontal collision
-    player.rect.x += dx
-    for wall in player.game.blocks:
-        if player.rect.colliderect(wall.rect):
-            if dx > 0:  # Moving right
-                player.rect.right = wall.rect.left
-            if dx < 0:  # Moving left
-                player.rect.left = wall.rect.right
+        future_rect = player.rect.copy()
+        future_rect.x = target_x
+        future_rect.y = target_y
 
-    # Vertical collision
-    player.rect.y += dy
-    player.on_ground = False  # Assume midair unless proven on wall
-    for wall in player.game.blocks:
-        if player.rect.colliderect(wall.rect):
-            if dy > 0:  # Falling down
-                player.rect.bottom = wall.rect.top
-                player.vel_y = 0
-                player.on_ground = True
-                player.is_jumping = False
-            elif dy < 0:  # Jumping up
-                player.rect.top = wall.rect.bottom
-                player.vel_y = 0
+        #print(f"[DEBUG] Current tile: ({player.rect.x // tile_size}, {player.rect.y // tile_size})")
+        
+
+        for wall in player.game.blocks:
+            if future_rect.colliderect(wall.rect):
+                print("[DEBUG] Movement blocked by wall.")
+                return
+
+
+        #print("[DEBUG] Movement allowed. Starting move.")
+        player.target_pos = (target_x, target_y)
+        player.moving = True

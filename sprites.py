@@ -3,8 +3,8 @@ import pygame
 import random
 from config import *
 import math 
-from mechanics import handle_player_movement
-
+from mechanics import handle_tile_movement
+import traceback
 
 # Handles character sprite sheet and allows extracting individual sprites
 class CharSprite:
@@ -35,9 +35,12 @@ class Player(pygame.sprite.Sprite):
         self._layer = player_layer
         self.groups = self.game.all_sprites 
         pygame.sprite.Sprite.__init__(self, self.groups)
+        
+
 
         self.x = x * tile_size
         self.y = y * tile_size
+
         self.width = tile_size
         self.height = tile_size
 
@@ -53,19 +56,38 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(raw_sprite, (self.width, self.height))  # Scale to tile size
 
         self.rect = self.image.get_rect()
-        self.rect.x = self.x 
+        self.rect.x = self.x
         self.rect.y = self.y
 
-        self.vel_y = 0
-        self.gravity = 1
-        self.is_jumping = False
-        self.jump_strength = -15
-        self.on_ground = True
+        # Also reset target position
+        self.target_pos = (self.rect.x, self.rect.y)
+
+        self.moving = False
+        self.move_speed = 4  # Pixels per frame (smooth stepping)
 
 
     def update(self):
         keys = pygame.key.get_pressed()
-        handle_player_movement(self, keys)
+
+        # Handle movement intent
+        handle_tile_movement(self, keys)
+
+        # Move toward target
+        if self.moving:
+            tx, ty = self.target_pos
+            dx = tx - self.rect.x
+            dy = ty - self.rect.y
+
+            if dx != 0:
+                self.rect.x += self.move_speed if dx > 0 else -self.move_speed
+            if dy != 0:
+                self.rect.y += self.move_speed if dy > 0 else -self.move_speed
+
+            # Snap if close enough
+            if abs(dx) <= self.move_speed and abs(dy) <= self.move_speed:
+                self.rect.x = tx
+                self.rect.y = ty
+                self.moving = False
 
 
 
@@ -89,6 +111,7 @@ class Wall(pygame.sprite.Sprite):
 
 
 # Represents a door tile
+
 class Door(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         self.game = game
@@ -106,13 +129,65 @@ class Door(pygame.sprite.Sprite):
         self.rect.x = self.x
         self.rect.y = self.y
 
+        self.locked = True
+
+    def try_unlock(self, player, dx, dy):
+        if not self.locked:
+            return
+
+        # Predict player's next tile
+        next_x = player.rect.x + dx
+        next_y = player.rect.y + dy
+
+        next_rect = player.rect.copy()
+        next_rect.x = next_x
+        next_rect.y = next_y
+
+        print(f"[DEBUG] Player at {player.rect.topleft} trying to move to {next_rect.topleft} (checking door at {self.rect.topleft})")
+
+        if self.rect.colliderect(next_rect):
+            # Does the player have a key?
+            for sprite in self.game.all_sprites:
+                if isinstance(sprite, Key) and sprite.carried_by == player:
+                    print("[DEBUG] Door unlocked via try_unlock.")
+                    self.unlock()
+                    return
+
+    def unlock(self):
+        if not self.locked:
+            return
+
+        print("[DEBUG] Door unlocking — replacing with floor and removing key.")
+        self.locked = False
+        
+
+        # Remove the key being carried by the player who unlocked the door
+        for sprite in list(self.game.all_sprites):
+            if isinstance(sprite, Key) and sprite.carried_by:
+                player = sprite.carried_by
+                print(f"[DEBUG] Key used by {player} — removing key.")
+                sprite.carried_by = None
+                sprite.used = True  # optional
+                sprite.kill()
+                break
+
+        print(f"[DEBUG] Keys in game: {[k for k in self.game.all_sprites if isinstance(k, Key)]}")
+        
+        # Replace door with a floor tile
+        Floor(self.game, self.rect.x // tile_size, self.rect.y // tile_size)
+        self.kill()
+
+        self.game.check_win_condition()
+        print("[DEBUG] Player added. Call stack:")
+        traceback.print_stack()
+
 
 # Represents a walkable floor tile
 class Floor(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         self.game = game
         self._layer = floor_layer
-        self.groups = self.game.all_sprites, self.game.blocks
+        self.groups = self.game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
 
         self.x = x * tile_size
@@ -130,7 +205,7 @@ class Floor(pygame.sprite.Sprite):
 class Key(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         self.game = game
-        self._layer = item_layer  # Item layer must be defined in config.py
+        self._layer = item_layer
         self.groups = self.game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
 
@@ -143,3 +218,55 @@ class Key(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = self.x
         self.rect.y = self.y
+
+        self.carried_by = None  # Player carrying the key
+        self.used = False
+
+    def update(self):
+        if not self.alive():  # Skip update if killed
+            return
+
+        if self.carried_by:
+            # Follow the player
+            px, py = self.carried_by.rect.center
+            kx, ky = self.rect.center
+            self.rect.centerx += (px - kx) * 0.1
+            self.rect.centery += (py - ky) * 0.1
+        else:
+            # Idle behavior or pickup logic
+            for player in self.game.players.values():
+                if self.rect.colliderect(player.rect):
+                    self.carried_by = player
+                    break
+
+            #Only place a floor tile once, and only if not already used
+        
+class TutorialMessage(pygame.sprite.Sprite):
+    def __init__(self, game, text, duration=3000):  # duration in ms
+        self.game = game
+        self._layer = 999  # Always on top
+        self.groups = self.game.all_sprites
+        pygame.sprite.Sprite.__init__(self, self.groups)
+
+        self.font = pygame.font.SysFont("verdana", 24)
+        self.text = text
+        self.image = self.font.render(self.text, True, (255, 255, 255))
+        self.image.set_alpha(255)
+        
+
+        self.rect = self.image.get_rect(center=(800 // 2, 40))
+        self.start_time = pygame.time.get_ticks()
+        self.duration = duration
+        self.alpha = 255
+
+    def update(self):
+        # How long has it been visible
+        elapsed = pygame.time.get_ticks() - self.start_time
+
+        if elapsed > self.duration:
+            self.kill()  # Remove from game
+        else:
+            # Fade out over time
+            fade_speed = 255 / (self.duration / 100)  # adjust for smooth fade
+            self.alpha = max(0, 255 - int(elapsed * fade_speed / 10))
+            self.image.set_alpha(self.alpha)

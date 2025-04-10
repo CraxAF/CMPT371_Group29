@@ -3,20 +3,20 @@ import pygame
 from sprites import *
 from config import *
 import sys
-import client
-
 
 # Main game class that handles game state, drawing, and logic
 class Game:
     def __init__(self):
         pygame.init()
-        self.players = client.get_player_position()  # Maps player names to Player objects
+        self.players = {}  # Maps player names to Player objects
         self.spawn_points = []  # Stores tilemap spawn point positions
         self.sprite_counter = 0  # Used to assign unique sprites
         self.screen = pygame.display.set_mode([win_width, win_height])  # Game window
         self.clock = pygame.time.Clock()
         self.running = True
         self.font = pygame.font.Font(None, 32)
+        self.waiting_for_restart = False
+
 
         # Load all sprite resources
         self.spritesheet = CharSprite("img/character_sprites.png")
@@ -73,6 +73,7 @@ class Game:
 
     # Adds a new player sprite to the game
     def add_player(self, name, x, y):
+        print(f"[DEBUG] Adding player {name} at ({x}, {y})")
         sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
         player = Player(self, x, y, sprite_idx)
         self.players[name] = player
@@ -82,16 +83,38 @@ class Game:
     def new(self):
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.blocks = pygame.sprite.LayeredUpdates()
-        #self.create_tilemap()  # Build the map
-        client.main(player_name)
+        self.players = {}  # Clear existing players
+        self.spawn_points = []  # Reset spawn points
+        self.create_tilemap()
         self.playing = True
+        TutorialMessage(self, "Press WASD to move – Press R to restart", duration=60000)
+
+        g = self  # alias for brevity
+        for i, name in enumerate(["Alice", "Bob", player_name]):
+            if i < len(g.spawn_points):
+                x, y = g.spawn_points[i]
+                g.add_player(name, x, y)
+
+        #print("[DEBUG] Wall tile positions:")
+        #for wall in self.blocks:
+            #print(f"  - ({wall.rect.x}, {wall.rect.y})  tile=({wall.rect.x // tile_size}, {wall.rect.y // tile_size})")
 
     # Handles game events (e.g., quitting)
     def events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.playing = False
                 self.running = False
+                self.playing = False
+
+            elif event.type == pygame.KEYDOWN:
+
+                if event.key == pygame.K_ESCAPE:
+                    self.running = False
+                    self.playing = False
+
+                elif event.key == pygame.K_r:
+                    print("[DEBUG] R key pressed – restarting game.")
+                    self.restart()
 
     # Updates all game objects
     def update(self):
@@ -99,31 +122,13 @@ class Game:
 
     # Draws all game objects to the screen
     def draw(self):
-        #self.screen.fill(black)
-        #for sprite in self.all_sprites:
-            #self.screen.blit(sprite.image, sprite.rect)
-        #self.clock.tick(60)
         self.screen.fill(black)
-        positions = client.get_player_position()
-        for name, pos in positions.items():
-            if name not in self.players:
-                sprite_idx = 0
-                self.players[name] = Player(self, pos["x"], pos["y"], sprite_idx)
-            else:
-                self.players[name].x = pos["x"]
-                self.players[name].y = pos["y"]
-                self.players[name].rect.topleft = (pos["x"], pos["y"])
-            self.screen.blit(self.players[name].image, self.players[name].rect)
-
-        objects = client.get_game_objects()
-        for obj in objects.values():
-            if obj["type"] == "door":
-                self.screen.blit(self.door_img.image, (obj["x"], obj["y"]))
-            elif obj["type"] == "pushable":
-                self.screen.blit(self.key_img.image, (obj["x"], obj["y"]))
-            elif obj["type"] == "wall":
-                self.screen.blit(self.wall_img.image, (obj["x"], obj["y"]))
-
+        for sprite in self.all_sprites:
+            self.screen.blit(sprite.image, sprite.rect)
+        self.clock.tick(60)
+        #WALL COLLISION [DEBUG]
+        #for wall in self.blocks:
+        #    pygame.draw.rect(self.screen, (255, 0, 0), wall.rect, 2)
         pygame.display.update()
 
     # Creates game world from tile_map config
@@ -141,6 +146,33 @@ class Game:
                 elif tile == "P":
                     Floor(self, j, i)
                     self.spawn_points.append((j, i))
+        
+
+    #Create new instance of game
+    def restart(self):
+        self.new()   # Reset game objects, map, etc.
+
+    #check win con
+    def check_win_condition(self):
+        # If there are no locked doors left, trigger win
+        for sprite in self.all_sprites:
+            if hasattr(sprite, "locked") and sprite.locked:
+                return  # Still at least one locked door
+
+        # If we get here, all doors are unlocked!
+        print("[DEBUG] All doors are unlocked! YOU WIN!")
+        self.win()
+    
+    def win(self):
+        # Freeze the game or show a message
+        
+        self.waiting_for_restart = True
+
+        # Show a fading message (optional)
+        from sprites import TutorialMessage  # or ui.py if you moved it
+        TutorialMessage(self, "YOU ESCAPED! press R to restart", duration=999999)
+
+        
 
     # Main game loop
     def main(self):
