@@ -1,14 +1,17 @@
 # game.py
+import time
 import pygame
 from sprites import *
 from config import *
 import sys
-
+import client
 # Main game class that handles game state, drawing, and logic
 class Game:
     def __init__(self):
         pygame.init()
         self.players = {}  # Maps player names to Player objects
+        self.doors = {}
+        self.keys = {}
         self.spawn_points = []  # Stores tilemap spawn point positions
         self.sprite_counter = 0  # Used to assign unique sprites
         self.screen = pygame.display.set_mode([win_width, win_height])  # Game window
@@ -16,7 +19,8 @@ class Game:
         self.running = True
         self.font = pygame.font.Font(None, 32)
         self.waiting_for_restart = False
-
+        self.key_number = 0
+        self.door_number = 0
 
         # Load all sprite resources
         self.spritesheet = CharSprite("img/character_sprites.png")
@@ -75,25 +79,35 @@ class Game:
     def add_player(self, name, x, y):
         print(f"[DEBUG] Adding player {name} at ({x}, {y})")
         sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
-        player = Player(self, x, y, sprite_idx)
+        main = (name == player_name)  # Check if this is the main player
+        player = Player(self, x, y, name, main, sprite_idx)
         self.players[name] = player
-        self.sprite_counter += 1
-
+        self.sprite_counter += 1        
+        
     # Sets up the level and sprite groups
     def new(self):
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.blocks = pygame.sprite.LayeredUpdates()
         self.players = {}  # Clear existing players
         self.spawn_points = []  # Reset spawn points
+        start = time.time()
+        while not client.get_game_objects() and time.time() - start < 5:
+            pygame.time.wait(100)
         self.create_tilemap()
         self.playing = True
         TutorialMessage(self, "Press WASD to move – Press R to restart", duration=60000)
-
+        while not client.get_player_position() and time.time() - start < 5:
+            pygame.time.wait(100)
+        print(f"[DEBUG] Player positions: {client.get_player_position()}")
         g = self  # alias for brevity
-        for i, name in enumerate(["Alice", "Bob", player_name]):
-            if i < len(g.spawn_points):
-                x, y = g.spawn_points[i]
-                g.add_player(name, x, y)
+        positions = client.get_player_position()  # Fetch player positions from the server
+        for name, pos in positions.items():
+            x,y = pos["x"],pos["y"]
+            self.add_player(name, x, y)
+        #for i, name in enumerate([player_name]):
+        #    if i < len(g.spawn_points):
+        #        x, y = g.spawn_points[i]
+        #        g.add_player(name, x, y)
 
         #print("[DEBUG] Wall tile positions:")
         #for wall in self.blocks:
@@ -119,12 +133,46 @@ class Game:
     # Updates all game objects
     def update(self):
         self.all_sprites.update()
+        positions = client.get_player_position()
+        for name, pos in positions.items():
+            #print(f"[DEBUG] Updating position for {name}: {pos}")
+            if name not in self.players:
+                self.add_player(name, pos["x"], pos["y"])
+            elif name in self.players and name != player_name:
+                player = self.players[name]
+                player.x = pos["x"] * tile_size
+                player.y = pos["y"] * tile_size
+                player.rect.topleft = (player.x , player.y)
+        
+        objects = client.get_game_objects()
+        for object in objects.values():
+            for door in self.doors:
+                if self.doors[door].objectid == object["id"]:
+                    self.doors[door].locked = object["locked"] 
+                    if not object["locked"]:
+                        self.doors[door].locked = True
+                        print(f"[DEBUG] Door {door} unlocked!")
+                        self.doors[door].unlock()
+                        del self.doors[door]
+                        break
+            if object["type"] == "pushable":
+                if(object["id"] not in self.keys):
+                    del self.keys[object["id"]]
+                    break
+        for key in self.keys:
+            if(self.keys[key].objectid not in objects):
+                del self.keys[key]
+                break
+
+                    
+
 
     # Draws all game objects to the screen
     def draw(self):
         self.screen.fill(black)
         for sprite in self.all_sprites:
             self.screen.blit(sprite.image, sprite.rect)
+        
         self.clock.tick(60)
         #WALL COLLISION [DEBUG]
         #for wall in self.blocks:
@@ -132,20 +180,35 @@ class Game:
         pygame.display.update()
 
     # Creates game world from tile_map config
+
     def create_tilemap(self):
-        for i, row in enumerate(tile_map):
-            for j, tile in enumerate(row):
-                if tile == "B":
-                    Wall(self, j, i)
-                elif tile == "D":
-                    Door(self, j, i)
-                elif tile == ".":
-                    Floor(self, j, i)
-                elif tile == "K":
-                    Key(self, j, i)
-                elif tile == "P":
-                    Floor(self, j, i)
-                    self.spawn_points.append((j, i))
+        objects = client.get_game_objects()
+        for object in objects.values():
+            if object["type"] == "wall":
+                Wall(self, object["x"], object["y"], object["id"])
+            elif object["type"] == "door":
+                door = Door(self, object["x"], object["y"], object["id"])
+                self.doors[object["id"]] = door
+            elif object["type"] == "pushable":
+                key = Key(self, object["x"], object["y"], object["id"])
+                self.keys[object["id"]] = key
+            elif object["type"] == "floor":
+                Floor(self, object["x"], object["y"], object["id"])
+        #for i, row in enumerate(tile_map):
+        #    for j, tile in enumerate(row):
+        #        if tile == "B":
+        #            Wall(self, j, i)
+        #        elif tile == "D":
+        #            Door(self, j, i, f"door{self.door_number}")
+        #            self.door_number += 1
+        #        elif tile == ".":
+        #            Floor(self, j, i)
+        #        elif tile == "K":
+        #            Key(self, j, i, f"key{self.key_number}")
+        #            self.key_number += 1
+        #        elif tile == "P":
+        #            Floor(self, j, i)
+        #            self.spawn_points.append((j, i))
         
 
     #Create new instance of game
@@ -186,14 +249,15 @@ class Game:
 # Instantiate and run the game
 g = Game()
 player_name = g.intro_screen()  # Get player name
+client.main(player_name)  # Start the main game loop
 g.new()
 
 # Assign players to available spawn points
-names = ["Alice", "Bob", player_name]
-for i, name in enumerate(names):
-    if i < len(g.spawn_points):
-        x, y = g.spawn_points[i]
-        g.add_player(name, x, y)
+#names = [player_name]
+#for i, name in enumerate(names):
+    #if i < len(g.spawn_points):
+        #x, y = g.spawn_points[i]
+
 
 # Run the main loop
 while g.running:

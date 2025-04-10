@@ -10,11 +10,16 @@ class SyncManager:
         self.objects = {}  # object_id -> {type, x, y, possessed_by}
         self.spawn_points = []
         self.next_object_id = 1                   # object_id -> object data
-        self.door_unlocked = False
+        self.door_unlocked = []
         self.passed_door = {}                # player_name -> bool
         self.socket_map = {}                 # player_name -> client_socket
+        self.key_number = 0
+        self.door_number = 0
+        self.floor_number = 0
+        self.wall_number = 0
         self.initialize_map()
-
+        
+        
     def broadcast(self, message_dict, sender_socket=None):
         message_json = json.dumps(message_dict).encode()
         for client in list(self.clients):
@@ -27,15 +32,22 @@ class SyncManager:
         from config import tile_map  # Import tile_map here
         for i, row in enumerate(tile_map):
             for j, tile in enumerate(row):
-                x, y = j * tile_size, i * tile_size
+                x, y = j , i 
                 if tile == "B":
-                    self.objects[f"wall_{x}_{y}"] = {"type": "wall", "x": x, "y": y}
+                    self.objects[f"wall{self.wall_number}"] = {"id":f"wall{self.wall_number}","type": "wall", "x": x, "y": y}
+                    self.wall_number += 1
                 elif tile == "D":
-                    self.objects[f"door_{x}_{y}"] = {"type": "door", "x": x, "y": y}
+                    self.objects[f"door{self.door_number}"] = {"id":f"door{self.door_number}","type": "door", "x": x, "y": y, "locked": True}
+                    self.door_number += 1
                 elif tile == "K":
-                    self.objects[f"key_{x}_{y}"] = {"type": "pushable", "x": x, "y": y, "possessed_by": None}
+                    self.objects[f"key{self.key_number}"] = {"id":f"key{self.key_number}","type": "pushable", "x": x, "y": y, "possessed_by": None}
+                    self.key_number += 1
+                elif tile == ".":
+                    self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
+                    self.floor_number += 1
                 elif tile == "P":
                     self.spawn_points.append((x, y))
+        self.sync_objects()
 
     def handle_join(self, client_socket, message_dict):
         player_name = message_dict.get("player")
@@ -90,40 +102,20 @@ class SyncManager:
         position = message_dict.get("position")
         object_id = message_dict.get("object_id")
         possessed_by = message_dict.get("possessed_by")
-
+        type_ = message_dict.get("type")
         if object_id not in self.objects:
             return
+        if(type_ == "pushable"):
+            obj = self.objects[object_id]
+            obj["possessed_by"] = possessed_by
 
-        obj = self.objects[object_id]
-        obj["x"] = position[0]
-        obj["y"] = position[1]
-        obj["possessed_by"] = possessed_by
+        if(type_ == "unlock"):
+            self.objects[object_id]["locked"] = False
 
-        if object_id == "key1":
-            door = self.objects.get("door1")
-            if door and door["locked"] and self.is_near(door, obj):
-                door["locked"] = False
-                self.door_unlocked = True
-                print("Door unlocked!")
-                del self.objects["key1"]
-                print("Key removed after unlocking the door.")
+        if(type_ == "delete_key"):
+            print(f"Deleting key {object_id}")
+            del self.objects[object_id]
 
-        if self.door_unlocked:
-            door = self.objects.get("door1")
-            if door:
-                for pname, pos in self.player_positions.items():
-                    player_rect = pygame.Rect(pos["x"], pos["y"], 50, 50)
-                    door_rect = pygame.Rect(door["x"], door["y"], 50, 50)
-                    if player_rect.colliderect(door_rect) and not self.passed_door[pname]:
-                        print(f"Player {pname} passed through the door!")
-                        self.passed_door[pname] = True
-                        self.broadcast({
-                            "type": "player_passed_door",
-                            "player": pname,
-                            "door_id": door["id"],
-                            "passed": True
-                        })
-                        self.check_all_players_passed_door()
 
         self.sync_objects()
 
@@ -193,4 +185,3 @@ class SyncManager:
         self.passed_door.clear()
 
         self.initialize_map()
-        print("Game state reset. Ready for new players to join.")

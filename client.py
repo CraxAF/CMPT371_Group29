@@ -39,7 +39,7 @@ def receive_messages(sock):
                 elif message_dict["type"] == "sync_objects":
                     global game_objects
                     game_objects = message_dict["objects"]
-
+                    
                 elif message_dict["type"] == "player_passed_door":
                     print("Player passed the door:", message_dict["player"])
                     if message_dict["player"] == player_n:
@@ -109,6 +109,20 @@ def send_action(action, player_name, possessed_by, object_id=None, position=None
             "position": position
         }
         send_message(message)
+    elif action == "unlock":
+        message = {
+            "type": "unlock",
+            "player": player_name,
+            "object_id": object_id
+        }
+        send_message(message)
+    elif action == "delete_key":
+        message = {
+            "type": "delete_key",
+            "player": player_name,
+            "object_id": object_id
+        }
+        send_message(message)
 
 def send_message(message):
     try:
@@ -117,6 +131,3 @@ def send_message(message):
     except Exception as e:
         print(f"[!] Send error: {e}")
 
-# Entry point of the client script
-if __name__ == "__main__":
-    pass 

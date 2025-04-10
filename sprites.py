@@ -5,7 +5,7 @@ from config import *
 import math 
 from mechanics import handle_tile_movement
 import traceback
-
+import client
 # Handles character sprite sheet and allows extracting individual sprites
 class CharSprite:
     def __init__(self, file):
@@ -30,7 +30,9 @@ class Sprite:
 
 # Represents a player character in the game
 class Player(pygame.sprite.Sprite):
-    def __init__(self, game, x, y, sprite_idx=0):
+    def __init__(self, game, x, y, player_name, main, sprite_idx=0):
+        self.player_name = player_name
+        self.main = main
         self.game = game
         self._layer = player_layer
         self.groups = self.game.all_sprites 
@@ -67,33 +69,35 @@ class Player(pygame.sprite.Sprite):
 
 
     def update(self):
-        keys = pygame.key.get_pressed()
+        if(self.main):
+            keys = pygame.key.get_pressed()
 
-        # Handle movement intent
-        handle_tile_movement(self, keys)
+            # Handle movement intent
+            handle_tile_movement(self, keys)
 
-        # Move toward target
-        if self.moving:
-            tx, ty = self.target_pos
-            dx = tx - self.rect.x
-            dy = ty - self.rect.y
+            # Move toward target
+            if self.moving:
+                tx, ty = self.target_pos
+                dx = tx - self.rect.x
+                dy = ty - self.rect.y
 
-            if dx != 0:
-                self.rect.x += self.move_speed if dx > 0 else -self.move_speed
-            if dy != 0:
-                self.rect.y += self.move_speed if dy > 0 else -self.move_speed
+                if dx != 0:
+                    self.rect.x += self.move_speed if dx > 0 else -self.move_speed
+                if dy != 0:
+                    self.rect.y += self.move_speed if dy > 0 else -self.move_speed
 
-            # Snap if close enough
-            if abs(dx) <= self.move_speed and abs(dy) <= self.move_speed:
-                self.rect.x = tx
-                self.rect.y = ty
-                self.moving = False
-
+                # Snap if close enough
+                if abs(dx) <= self.move_speed and abs(dy) <= self.move_speed:
+                    self.rect.x = tx
+                    self.rect.y = ty
+                    self.moving = False
+                client.send_action("move", self.player_name, None, None, position=(self.rect.x/tile_size, self.rect.y/tile_size))
 
 
 # Represents a wall tile
 class Wall(pygame.sprite.Sprite):
-    def __init__(self, game, x, y):
+    def __init__(self, game, x, y, objectid):
+        self.objectid = objectid
         self.game = game
         self._layer = wall_layer
         self.groups = self.game.all_sprites, self.game.blocks
@@ -113,7 +117,8 @@ class Wall(pygame.sprite.Sprite):
 # Represents a door tile
 
 class Door(pygame.sprite.Sprite):
-    def __init__(self, game, x, y):
+    def __init__(self, game, x, y, objectid):
+        self.objectid = objectid
         self.game = game
         self._layer = wall_layer
         self.groups = self.game.all_sprites, self.game.blocks
@@ -143,7 +148,7 @@ class Door(pygame.sprite.Sprite):
         next_rect.x = next_x
         next_rect.y = next_y
 
-        print(f"[DEBUG] Player at {player.rect.topleft} trying to move to {next_rect.topleft} (checking door at {self.rect.topleft})")
+        #print(f"[DEBUG] {player.player_name} at {player.rect.topleft} trying to move to {next_rect.topleft} (checking door at {self.rect.topleft})")
 
         if self.rect.colliderect(next_rect):
             # Does the player have a key?
@@ -151,6 +156,7 @@ class Door(pygame.sprite.Sprite):
                 if isinstance(sprite, Key) and sprite.carried_by == player:
                     print("[DEBUG] Door unlocked via try_unlock.")
                     self.unlock()
+                    client.send_action("unlock", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
                     return
 
     def unlock(self):
@@ -169,22 +175,24 @@ class Door(pygame.sprite.Sprite):
                 sprite.carried_by = None
                 sprite.used = True  # optional
                 sprite.kill()
+                client.send_action("delete_key", player.player_name, player.player_name, sprite.objectid, position=(sprite.rect.x, sprite.rect.y))
                 break
 
         print(f"[DEBUG] Keys in game: {[k for k in self.game.all_sprites if isinstance(k, Key)]}")
         
         # Replace door with a floor tile
-        Floor(self.game, self.rect.x // tile_size, self.rect.y // tile_size)
+        Floor(self.game, self.rect.x // tile_size, self.rect.y // tile_size, "floorx")
         self.kill()
 
         self.game.check_win_condition()
         print("[DEBUG] Player added. Call stack:")
-        traceback.print_stack()
+        #traceback.print_stack()
 
 
 # Represents a walkable floor tile
 class Floor(pygame.sprite.Sprite):
-    def __init__(self, game, x, y):
+    def __init__(self, game, x, y, objectid):
+        self.objectid = objectid
         self.game = game
         self._layer = floor_layer
         self.groups = self.game.all_sprites
@@ -203,7 +211,8 @@ class Floor(pygame.sprite.Sprite):
 
 # Represents a collectible key item
 class Key(pygame.sprite.Sprite):
-    def __init__(self, game, x, y):
+    def __init__(self, game, x, y, objectid):
+        self.objectid = objectid
         self.game = game
         self._layer = item_layer
         self.groups = self.game.all_sprites
@@ -237,6 +246,7 @@ class Key(pygame.sprite.Sprite):
             for player in self.game.players.values():
                 if self.rect.colliderect(player.rect):
                     self.carried_by = player
+                    client.send_action("push", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
                     break
 
             #Only place a floor tile once, and only if not already used

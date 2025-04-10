@@ -26,11 +26,16 @@ def handle_client(client_socket, addr):
                 try:
                     message_dict = json.loads(msg_json) # Decode JSON string to dict
                     msg_type = message_dict.get("type")
+                    #print(f"[+] Received message: {message_dict}")
                     if msg_type == "join":
                         sm.handle_join(client_socket, message_dict)
                     elif msg_type == "move":
                         sm.handle_move(client_socket, message_dict)
                     elif msg_type == "push":
+                        sm.handle_objects(client_socket, message_dict)
+                    elif msg_type == "unlock":
+                        sm.handle_objects(client_socket, message_dict)
+                    elif msg_type == "delete_key":
                         sm.handle_objects(client_socket, message_dict)
                     else:
                         print(f"[!] Unknown message type: {msg_type}")
