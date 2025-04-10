@@ -154,7 +154,7 @@ class Door(pygame.sprite.Sprite):
             # Does the player have a key?
             for sprite in self.game.all_sprites:
                 if isinstance(sprite, Key) and sprite.carried_by == player:
-                    print("[DEBUG] Door unlocked via try_unlock.")
+                    #print("[DEBUG] Door unlocked via try_unlock.")
                     self.unlock()
                     client.send_action("unlock", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
                     return
@@ -163,7 +163,7 @@ class Door(pygame.sprite.Sprite):
         if not self.locked:
             return
 
-        print("[DEBUG] Door unlocking — replacing with floor and removing key.")
+        #print("[DEBUG] Door unlocking — replacing with floor and removing key.")
         self.locked = False
         
 
@@ -171,21 +171,21 @@ class Door(pygame.sprite.Sprite):
         for sprite in list(self.game.all_sprites):
             if isinstance(sprite, Key) and sprite.carried_by:
                 player = sprite.carried_by
-                print(f"[DEBUG] Key used by {player} — removing key.")
+                #print(f"[DEBUG] Key used by {player} — removing key.")
                 sprite.carried_by = None
                 sprite.used = True  # optional
                 sprite.kill()
                 client.send_action("delete_key", player.player_name, player.player_name, sprite.objectid, position=(sprite.rect.x, sprite.rect.y))
                 break
 
-        print(f"[DEBUG] Keys in game: {[k for k in self.game.all_sprites if isinstance(k, Key)]}")
+        #print(f"[DEBUG] Keys in game: {[k for k in self.game.all_sprites if isinstance(k, Key)]}")
         
         # Replace door with a floor tile
         Floor(self.game, self.rect.x // tile_size, self.rect.y // tile_size, "floorx")
         self.kill()
 
         self.game.check_win_condition()
-        print("[DEBUG] Player added. Call stack:")
+        #print("[DEBUG] Player added. Call stack:")
         #traceback.print_stack()
 
 
@@ -250,7 +250,8 @@ class Key(pygame.sprite.Sprite):
                     break
 
             #Only place a floor tile once, and only if not already used
-        
+
+#Tutorial mesage logic handler
 class TutorialMessage(pygame.sprite.Sprite):
     def __init__(self, game, text, duration=3000):  # duration in ms
         self.game = game

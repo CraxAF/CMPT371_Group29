@@ -7,7 +7,7 @@ def handle_tile_movement(player, keys):
         return
 
     dx, dy = 0, 0
-
+#wasd free movement
     if keys[pygame.K_a]:
         dx = -1
         #print("[DEBUG] A pressed - move left")
@@ -20,7 +20,7 @@ def handle_tile_movement(player, keys):
     elif keys[pygame.K_s]:
         dy = 1
         #print("[DEBUG] S pressed - move down")
-
+#acceleration to determine collision
     if dx != 0 or dy != 0:
         for sprite in player.game.blocks:
             if hasattr(sprite, "try_unlock"):
@@ -37,10 +37,10 @@ def handle_tile_movement(player, keys):
         #print(f"[DEBUG] Current tile: ({player.rect.x // tile_size}, {player.rect.y // tile_size})")
         
 
-        for wall in player.game.blocks:
-            if future_rect.colliderect(wall.rect):
-                print("[DEBUG] Movement blocked by wall.")
-                return
+        #for wall in player.game.blocks:
+            #if future_rect.colliderect(wall.rect):
+                #print("[DEBUG] Movement blocked by wall.")
+                #return
 
 
         #print("[DEBUG] Movement allowed. Starting move.")

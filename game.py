@@ -77,7 +77,7 @@ class Game:
 
     # Adds a new player sprite to the game
     def add_player(self, name, x, y):
-        print(f"[DEBUG] Adding player {name} at ({x}, {y})")
+        #print(f"[DEBUG] Adding player {name} at ({x}, {y})")
         sprite_idx = self.sprite_counter % 24  # Cycle through available sprites
         main = (name == player_name)  # Check if this is the main player
         player = Player(self, x, y, name, main, sprite_idx)
@@ -98,7 +98,7 @@ class Game:
         TutorialMessage(self, "Press WASD to move – Press R to restart", duration=60000)
         while not client.get_player_position() and time.time() - start < 5:
             pygame.time.wait(100)
-        print(f"[DEBUG] Player positions: {client.get_player_position()}")
+        #print(f"[DEBUG] Player positions: {client.get_player_position()}")
         g = self  # alias for brevity
         positions = client.get_player_position()  # Fetch player positions from the server
         for name, pos in positions.items():
@@ -125,9 +125,9 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                     self.playing = False
-
+                #restart key
                 elif event.key == pygame.K_r:
-                    print("[DEBUG] R key pressed – restarting game.")
+                    #print("[DEBUG] R key pressed – restarting game.")
                     self.restart()
 
     # Updates all game objects
@@ -155,7 +155,7 @@ class Game:
                     self.doors[door].locked = object["locked"] 
                     if not object["locked"]:
                         self.doors[door].locked = True
-                        print(f"[DEBUG] Door {door} unlocked!")
+                        #print(f"[DEBUG] Door {door} unlocked!")
                         self.doors[door].unlock()
                         del self.doors[door]
                         break
@@ -227,7 +227,7 @@ class Game:
                 return  # Still at least one locked door
 
         # If we get here, all doors are unlocked!
-        print("[DEBUG] All doors are unlocked! YOU WIN!")
+        #print("[DEBUG] All doors are unlocked! YOU WIN!")
         self.win()
     
     def win(self):
