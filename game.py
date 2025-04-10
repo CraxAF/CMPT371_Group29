@@ -143,7 +143,11 @@ class Game:
                 player.x = pos["x"] * tile_size
                 player.y = pos["y"] * tile_size
                 player.rect.topleft = (player.x , player.y)
-        
+        for player in self.players:
+            if player not in positions:
+                self.players[player].kill()
+                del self.players[player]
+                break
         objects = client.get_game_objects()
         for object in objects.values():
             for door in self.doors:
