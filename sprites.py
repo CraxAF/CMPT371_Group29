@@ -250,7 +250,8 @@ class Key(pygame.sprite.Sprite):
                     break
 
             #Only place a floor tile once, and only if not already used
-        
+
+#Tutorial mesage logic handler
 class TutorialMessage(pygame.sprite.Sprite):
     def __init__(self, game, text, duration=3000):  # duration in ms
         self.game = game

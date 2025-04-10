@@ -125,7 +125,7 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                     self.playing = False
-
+                #restart key
                 elif event.key == pygame.K_r:
                     #print("[DEBUG] R key pressed – restarting game.")
                     self.restart()
@@ -223,7 +223,7 @@ class Game:
                 return  # Still at least one locked door
 
         # If we get here, all doors are unlocked!
-        print("[DEBUG] All doors are unlocked! YOU WIN!")
+        #print("[DEBUG] All doors are unlocked! YOU WIN!")
         self.win()
     
     def win(self):
