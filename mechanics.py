@@ -37,10 +37,10 @@ def handle_tile_movement(player, keys):
         #print(f"[DEBUG] Current tile: ({player.rect.x // tile_size}, {player.rect.y // tile_size})")
         
 
-        #for wall in player.game.blocks:
-            #if future_rect.colliderect(wall.rect):
+        for wall in player.game.blocks:
+            if future_rect.colliderect(wall.rect):
                 #print("[DEBUG] Movement blocked by wall.")
-                #return
+                return
 
 
         #print("[DEBUG] Movement allowed. Starting move.")
