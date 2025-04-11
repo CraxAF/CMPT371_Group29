@@ -30,22 +30,40 @@ class SyncManager:
 
     def initialize_map(self):
         from config import tile_map  # Import tile_map here
+        from config import colors 
+        color_map = {
+            "K": "red",     # Red Key
+            "G": "green",   # Green Key
+            "Y": "orange",  # Orange Key
+            "X": "maroon",  # Maroon Key
+            "D": "red",     # Red Door
+            "E": "green",   # Green Door
+            "F": "orange",  # Orange Door
+            "Z": "maroon"   # Maroon Door
+        }
         for i, row in enumerate(tile_map):
             for j, tile in enumerate(row):
                 x, y = j , i 
                 if tile == "B":
                     self.objects[f"wall{self.wall_number}"] = {"id":f"wall{self.wall_number}","type": "wall", "x": x, "y": y}
                     self.wall_number += 1
-                elif tile == "D":
-                    self.objects[f"door{self.door_number}"] = {"id":f"door{self.door_number}","type": "door", "x": x, "y": y, "locked": True}
+                elif tile in ["D", "E", "F", "Z"]:
+                    color = color_map[tile]
+                    self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
+                    self.objects[f"door{self.door_number}"] = {"id":f"door{self.door_number}","type": "door", "x": x, "y": y,"color": color ,"locked": True}
                     self.door_number += 1
-                elif tile == "K":
-                    self.objects[f"key{self.key_number}"] = {"id":f"key{self.key_number}","type": "key", "x": x, "y": y, "possessed_by": None}
+                elif tile in ["K", "Y", "G", "X"]:
+                    color = color_map[tile]
+                    self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
+                    self.objects[f"key{self.key_number}"] = {"id":f"key{self.key_number}","type": "key", "x": x, "y": y,"color": color ,"possessed_by": None}
                     self.key_number += 1
+                    self.floor_number += 1
                 elif tile == ".":
                     self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
                     self.floor_number += 1
                 elif tile == "P":
+                    self.objects[f"floor{self.floor_number}"] = {"id":f"floor{self.floor_number}","type": "floor", "x": x, "y": y}
+                    self.floor_number += 1
                     self.spawn_points.append((x, y))
         self.sync_objects()
 

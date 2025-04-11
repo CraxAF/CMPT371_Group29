@@ -23,6 +23,7 @@ class Game:
         self.door_number = 0
 
         # Load all sprite resources
+        self.items = pygame.sprite.Group()
         self.spritesheet = CharSprite("img/character_sprites.png")
         self.wall_img = Sprite("img/wall.png")
         self.door_img = Sprite("img/door.png")
@@ -195,12 +196,14 @@ class Game:
         objects = client.get_game_objects()
         for object in objects.values():
             if object["type"] == "wall":
-                Wall(self, object["x"], object["y"], object["id"])
+                Wall(self, object["x"],     object["y"], object["id"])
             elif object["type"] == "door":
-                door = Door(self, object["x"], object["y"], object["id"])
+                Floor(self, object["x"], object["y"], object["id"])
+                door = Door(self, object["x"], object["y"], object["id"], color=object.get("color", "red"))
                 self.doors[object["id"]] = door
             elif object["type"] == "key":
-                key = Key(self, object["x"], object["y"], object["id"])
+                Floor(self, object["x"], object["y"], object["id"])
+                key = Key(self, object["x"], object["y"], object["id"], color=object.get("color", "yellow"))
                 self.keys[object["id"]] = key
             elif object["type"] == "floor":
                 Floor(self, object["x"], object["y"], object["id"])

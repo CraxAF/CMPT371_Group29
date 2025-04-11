@@ -6,6 +6,16 @@ import math
 from mechanics import handle_tile_movement
 import traceback
 import client
+
+def tint_image(image, tint_color):
+    """Tints a surface by blending it with a given RGB color."""
+    tinted_image = image.copy()
+    tint = pygame.Surface(image.get_size(), pygame.SRCALPHA)
+    tint.fill(tint_color)  # This is already an RGB tuple
+    tinted_image.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return tinted_image
+
+
 # Handles character sprite sheet and allows extracting individual sprites
 class CharSprite:
     def __init__(self, file):
@@ -117,7 +127,8 @@ class Wall(pygame.sprite.Sprite):
 # Represents a door tile
 
 class Door(pygame.sprite.Sprite):
-    def __init__(self, game, x, y, objectid):
+    def __init__(self, game, x, y, objectid, color="red"):
+        self.color = color
         self.objectid = objectid
         self.game = game
         self._layer = wall_layer
@@ -129,7 +140,8 @@ class Door(pygame.sprite.Sprite):
         self.width = tile_size
         self.height = tile_size
 
-        self.image = self.game.door_img.get_sprite(0, 0, self.width, self.height)
+        base_image = self.game.door_img.get_sprite(0, 0, self.width, self.height)
+        self.image = tint_image(base_image, colors.get(color, (255,0,0)))
         self.rect = self.image.get_rect()
         self.rect.x = self.x
         self.rect.y = self.y
@@ -154,10 +166,11 @@ class Door(pygame.sprite.Sprite):
             # Does the player have a key?
             for sprite in self.game.all_sprites:
                 if isinstance(sprite, Key) and sprite.carried_by == player:
-                    #print("[DEBUG] Door unlocked via try_unlock.")
-                    self.unlock()
-                    client.send_action("unlock", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
-                    return
+                    if sprite.color == self.color:
+                        # print(f"[DEBUG] Door unlocked via try_unlock with matching key: {sprite.color}")
+                        self.unlock()
+                        client.send_action("unlock", player.player_name, player.player_name, self.objectid, position=(self.rect.x, self.rect.y))
+                        return
 
     def unlock(self):
         if not self.locked:
@@ -211,7 +224,8 @@ class Floor(pygame.sprite.Sprite):
 
 # Represents a collectible key item
 class Key(pygame.sprite.Sprite):
-    def __init__(self, game, x, y, objectid):
+    def __init__(self, game, x, y, objectid, color="yellow"):
+        self.color = color
         self.objectid = objectid
         self.game = game
         self._layer = item_layer
@@ -223,7 +237,8 @@ class Key(pygame.sprite.Sprite):
         self.width = tile_size
         self.height = tile_size
 
-        self.image = self.game.key_img.get_sprite(0, 0, self.width, self.height)
+        base_image = game.key_img.get_sprite(32, 0, 32, 32)  # example key sprite
+        self.image = tint_image(base_image, colors.get(color, (255, 0, 0))) 
         self.rect = self.image.get_rect()
         self.rect.x = self.x
         self.rect.y = self.y

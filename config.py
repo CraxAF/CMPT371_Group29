@@ -7,9 +7,19 @@ win_height = 800
 # Size of each tile in the grid (in pixels)
 tile_size = 32
 
-# Common colors used in the game (RGB format)
+#Colors used in the game (RGB format)
 black = (0, 0, 0)
 white = (255, 255, 255)
+
+colors = {
+    "black": (0, 0, 0),
+    "orange": (255, 140, 0),
+    "maroon": (128, 0, 0),
+    "blue": (0, 0, 255),
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+}
+
 
 # Dimensions of each sprite in the sprite sheet (before scaling)
 sprite_width = 32
@@ -29,25 +39,25 @@ tile_map = [
     'B.............B.........B',
     'B.BBBBB.BBBBB.B.BBBBBBB.B',
     'B.B.....B...B.......B...B',
-    'B.B.B.BBB.B.B.B.BBB.B.B.B',
+    'B.B.B.BBB.B.B.BEBBB.B.B.B',
     'B...B.....B.B.B.B...B.B.B',
     'BBBBB.BBBBB.B.B.B.BBB.B.B',
-    'B.....B...B.B.B.B.......B',
-    'B.BBBBB.B.B.B.B.BBBBBBB.B',
-    'B.B.....B.B.B.B.......B.B',
+    'B.....B..XB.B.B.B.......B',
+    'B.BBBBB...B.B.B.BBBBBBB.B',
+    'B.B.....B.B.B.B.....K.B.B', 
     'B.B.BBBBB.B.B.B.BBBBB.B.B',
-    'B.D.......B.B.B.......B.B',
+    'B.D.......B.B.B.......B.B',  
     'B.BBBBBBBBB.B.BBBBBBBBB.B',
-    'D......K.............. .B',
+    'Z.......................B',
     'BBBBBB.BBBBB.BBBBBBBBBBBB',
-    'B...........K...........B',
+    'B...........Y...........B',  
     'B.BBBBBBBBBB.BBBBBBBBB.BB',
     'B.B.................B..PB',
-    'B.B.BBBBB.BBBDBBBBB.B.BBB',
-    'B.B.....B.B.K...B.....B.B',
+    'B.B.BBBBB.BBBFBBBBB.B.BBB',  
+    'B.B.....B.B.....B.....B.B',
     'B.B.BBB.B.B.BBB.B.BBB.B.B',
-    'B...B...B.B...B.B.B...B.B',
+    'B...B...B.B..GB.B.B...B.B',  
     'B.BBB.BBB.B.B.B.B.B.BBB.B',
-    'B.P.P.....B.B.B.B.B.....B',
+    'B.P..P....B.B.B.B.B..P..B',
     'BBBBBBBBBBBBBBBBBBBBBBBBB',
 ]
