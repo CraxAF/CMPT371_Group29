@@ -222,6 +222,7 @@ class Game:
 
         # If we get here, all doors are unlocked!
         #print("[DEBUG] All doors are unlocked! YOU WIN!")
+        client.main(player_name)
         self.win()
     
     def win(self):
